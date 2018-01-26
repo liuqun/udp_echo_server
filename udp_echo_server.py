@@ -43,10 +43,10 @@ class EchoServer:
                 MSDN_URL = 'https://msdn.microsoft.com/library/windows/desktop/ms740668%28v%3Dvs.85%29.aspx'
                 print('For more information, see MSDN page:')
                 print(MSDN_URL)
-                self.cleanup()
-                raise RuntimeError('Can not bind UDP port')
             else:
                 print(e.strerror)
+            self.cleanup()
+            raise RuntimeError('Can not bind UDP port')
         except:
             print('Other unexcepted error happened during bind()!')
             raise
