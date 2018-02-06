@@ -51,18 +51,29 @@ class EchoServer:
             print('Other unexcepted error happened during bind()!')
             raise
 
+        default_timeout = 10.0  # in seconds
+        data_buf = bytearray(4096)
+        max_buffer_size = len(data_buf)
+        import select
         while True:
-            data, peer_sock_addr = self.sock_obj.recvfrom(MAX_MESSAGE_SIZE)  # FIXME: Server will get blocked
-            # NOTE: If no UDP packet is received, server will get blocked inside "recvfrom()" forever...
-
-            # Send back the data. That is the only thing an echo server should do.
-            self.sock_obj.sendto(data, peer_sock_addr)
-
-            # # Debug:
-            # peer_ip, peer_port = peer_sock_addr
-            # print('LOG: Received %d bytes from %s:%s.' % (len(data), peer_ip, peer_port))
-            # data_unicode16 = data.decode('utf-8')
-            # print(data_unicode16)
+            socks_incomming, socks_outgoing, errors = select.select([self.sock_obj.fileno()], [], [], default_timeout)
+            if len(socks_incomming) <= 0:
+                print('Heartbeat at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+                continue
+            # When an UDP packet arrives:
+            try:
+                data_len, peer_sock_addr = self.sock_obj.recvfrom_into(data_buf)
+                if data_len > MAX_MESSAGE_SIZE:
+                    # Warning: Long messages should be truncated. Drop the extra bytes.
+                    data_len = MAX_MESSAGE_SIZE
+                # Send back the data:
+                self.sock_obj.sendto(buffer(data_buf, 0, data_len), peer_sock_addr)
+            except IOError as e:
+                errno = e.errno
+                print("Error %d" % (errno))
+                print("Debug: max_buffer_size=%d" % (max_buffer_size))
+                if 'Windows' == platform.system():
+                    os.system('net helpmsg ' + str(errno))
 
     def cleanup(self):
         print('Cleanning up...')
